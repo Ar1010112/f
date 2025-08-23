@@ -38,7 +38,7 @@ export default function DashboardPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   useEffect(() => {
-    if (!user?.id) return
+    if (!user?.id || !transactions.length) return
 
     const fetchAnalytics = async () => {
       try {
@@ -47,18 +47,90 @@ export default function DashboardPage() {
           fetch(`/api/analytics?userId=${user.id}&type=weekly`)
         ])
 
-        const monthlyData = await monthlyResponse.json()
-        const weeklyData = await weeklyResponse.json()
+        if (monthlyResponse.ok && weeklyResponse.ok) {
+          const monthlyData = await monthlyResponse.json()
+          const weeklyData = await weeklyResponse.json()
 
-        setAnalytics(monthlyData)
-        setWeeklyData(weeklyData.dailyData || [])
+          setAnalytics(monthlyData)
+          setWeeklyData(weeklyData.dailyData || [])
+        } else {
+          // Fallback to client-side calculation
+          calculateAnalyticsClientSide()
+        }
       } catch (error) {
         console.error('Error fetching analytics:', error)
+        calculateAnalyticsClientSide()
       }
     }
 
+    const calculateAnalyticsClientSide = () => {
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+
+      const monthlyTransactions = transactions.filter(t => {
+        const transactionDate = new Date(t.date)
+        return transactionDate >= startOfMonth && transactionDate <= endOfMonth
+      })
+
+      const totalIncome = monthlyTransactions
+        .filter(t => t.type === 'INCOME')
+        .reduce((sum, t) => sum + t.amount, 0)
+
+      const totalExpenses = monthlyTransactions
+        .filter(t => t.type === 'EXPENSE')
+        .reduce((sum, t) => sum + t.amount, 0)
+
+      const categoryBreakdown = monthlyTransactions
+        .filter(t => t.type === 'EXPENSE')
+        .reduce((acc, transaction) => {
+          const categoryName = transaction.category?.name || 'Other'
+          acc[categoryName] = (acc[categoryName] || 0) + transaction.amount
+          return acc
+        }, {} as Record<string, number>)
+
+      setAnalytics({
+        totalIncome,
+        totalExpenses,
+        netIncome: totalIncome - totalExpenses,
+        categoryBreakdown,
+        transactionCount: monthlyTransactions.length,
+      })
+
+      // Generate weekly data
+      const weeklyData = []
+      const startOfWeek = new Date(now)
+      startOfWeek.setDate(now.getDate() - now.getDay())
+
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(startOfWeek)
+        day.setDate(startOfWeek.getDate() + i)
+        
+        const dayTransactions = transactions.filter(t => {
+          const transactionDate = new Date(t.date)
+          return transactionDate.toDateString() === day.toDateString()
+        })
+
+        const income = dayTransactions
+          .filter(t => t.type === 'INCOME')
+          .reduce((sum, t) => sum + t.amount, 0)
+
+        const expense = dayTransactions
+          .filter(t => t.type === 'EXPENSE')
+          .reduce((sum, t) => sum + t.amount, 0)
+
+        weeklyData.push({
+          name: format(day, 'EEE'),
+          income,
+          expense,
+        })
+      }
+
+      setWeeklyData(weeklyData)
+    }
+
     fetchAnalytics()
-  }, [user?.id])
+  }, [user?.id, transactions])
 
   const handleEditTransaction = (transaction: any) => {
     setEditingTransaction(transaction)

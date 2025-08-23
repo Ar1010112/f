@@ -8,7 +8,6 @@ export async function getTransactions(userId: string): Promise<Transaction[]> {
       include: {
         category: true,
       },
-      orderBy: { date: 'desc' },
     })
 
     return transactions.map(transaction => ({
@@ -52,7 +51,22 @@ export async function createTransaction(data: {
       },
     })
 
-    return transaction
+    return {
+      id: transaction.id,
+      amount: transaction.amount,
+      description: transaction.description,
+      date: transaction.date,
+      type: transaction.type as TransactionType,
+      categoryId: transaction.categoryId,
+      userId: transaction.userId,
+      category: transaction.category ? {
+        id: transaction.category.id,
+        name: transaction.category.name,
+        icon: transaction.category.icon,
+        color: transaction.category.color,
+        userId: transaction.category.userId,
+      } : undefined,
+    }
   } catch (error) {
     console.error('Error creating transaction:', error)
     throw error
@@ -78,7 +92,22 @@ export async function updateTransaction(
       },
     })
 
-    return transaction
+    return {
+      id: transaction.id,
+      amount: transaction.amount,
+      description: transaction.description,
+      date: transaction.date,
+      type: transaction.type as TransactionType,
+      categoryId: transaction.categoryId,
+      userId: transaction.userId,
+      category: transaction.category ? {
+        id: transaction.category.id,
+        name: transaction.category.name,
+        icon: transaction.category.icon,
+        color: transaction.category.color,
+        userId: transaction.category.userId,
+      } : undefined,
+    }
   } catch (error) {
     console.error('Error updating transaction:', error)
     throw error
@@ -113,7 +142,6 @@ export async function getTransactionsByDateRange(
       include: {
         category: true,
       },
-      orderBy: { date: 'desc' },
     })
   } catch (error) {
     console.error('Error fetching transactions by date range:', error)

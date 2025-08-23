@@ -2,26 +2,76 @@
 
 import Link from "next/link"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { PiggyBank } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useUser } from "@/lib/context/user-context"
+import { toast } from "sonner"
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: ""
+  })
+  const { register } = useUser()
+  const router = useRouter()
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    setIsLoading(true)
-    // In a real app, integrate with authentication here
     
-    // Simulate registration
-    setTimeout(() => {
-      window.location.href = "/dashboard"
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+      toast.error("Please fill in all fields")
+      return
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match")
+      return
+    }
+
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters")
+      return
+    }
+
+    setIsLoading(true)
+    
+    try {
+      const success = await register(formData.name, formData.email, formData.password)
+      
+      if (success) {
+        toast.success("Registration successful!")
+        router.push("/dashboard")
+      } else {
+        toast.error("Registration failed")
+      }
+    } catch (error) {
+      toast.error("Registration failed. Please try again.")
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
+  }
+
+  const handleDemoRegister = async () => {
+    setIsLoading(true)
+    try {
+      const success = await register("Demo User", "demo@example.com", "demo123")
+      if (success) {
+        toast.success("Demo registration successful!")
+        router.push("/dashboard")
+      }
+    } catch (error) {
+      toast.error("Demo registration failed")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -45,7 +95,7 @@ export default function RegisterPage() {
           <form onSubmit={onSubmit}>
             <div className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="name">Name</Label>
+                <Label htmlFor="name">Full Name</Label>
                 <Input
                   id="name"
                   placeholder="John Doe"
@@ -53,6 +103,9 @@ export default function RegisterPage() {
                   autoCapitalize="none"
                   autoCorrect="off"
                   disabled={isLoading}
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  required
                 />
               </div>
               <div className="grid gap-2">
@@ -65,6 +118,9 @@ export default function RegisterPage() {
                   autoComplete="email"
                   autoCorrect="off"
                   disabled={isLoading}
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  required
                 />
               </div>
               <div className="grid gap-2">
@@ -75,6 +131,22 @@ export default function RegisterPage() {
                   autoCapitalize="none"
                   autoComplete="new-password"
                   disabled={isLoading}
+                  value={formData.password}
+                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  disabled={isLoading}
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  required
                 />
               </div>
               <Button type="submit" disabled={isLoading}>
@@ -93,7 +165,7 @@ export default function RegisterPage() {
             </div>
           </div>
           <div className="grid gap-2">
-            <Button variant="outline" disabled={isLoading}>
+            <Button variant="outline" disabled={isLoading} onClick={handleDemoRegister}>
               Sign up as Demo User
             </Button>
           </div>

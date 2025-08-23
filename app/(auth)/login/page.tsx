@@ -2,26 +2,64 @@
 
 import Link from "next/link"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { PiggyBank } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useUser } from "@/lib/context/user-context"
+import { toast } from "sonner"
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    email: "",
+    password: ""
+  })
+  const { login } = useUser()
+  const router = useRouter()
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    setIsLoading(true)
-    // In a real app, integrate with authentication here
     
-    // Simulate login
-    setTimeout(() => {
-      window.location.href = "/dashboard"
+    if (!formData.email || !formData.password) {
+      toast.error("Please fill in all fields")
+      return
+    }
+
+    setIsLoading(true)
+    
+    try {
+      const success = await login(formData.email, formData.password)
+      
+      if (success) {
+        toast.success("Login successful!")
+        router.push("/dashboard")
+      } else {
+        toast.error("Invalid credentials")
+      }
+    } catch (error) {
+      toast.error("Login failed. Please try again.")
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
+  }
+
+  const handleDemoLogin = async () => {
+    setIsLoading(true)
+    try {
+      const success = await login("demo@example.com", "demo123")
+      if (success) {
+        toast.success("Demo login successful!")
+        router.push("/dashboard")
+      }
+    } catch (error) {
+      toast.error("Demo login failed")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -54,6 +92,9 @@ export default function LoginPage() {
                   autoComplete="email"
                   autoCorrect="off"
                   disabled={isLoading}
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  required
                 />
               </div>
               <div className="grid gap-2">
@@ -72,6 +113,9 @@ export default function LoginPage() {
                   autoCapitalize="none"
                   autoComplete="current-password"
                   disabled={isLoading}
+                  value={formData.password}
+                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                  required
                 />
               </div>
               <Button type="submit" disabled={isLoading}>
@@ -90,7 +134,7 @@ export default function LoginPage() {
             </div>
           </div>
           <div className="grid gap-2">
-            <Button variant="outline" disabled={isLoading}>
+            <Button variant="outline" disabled={isLoading} onClick={handleDemoLogin}>
               Sign in as Demo User
             </Button>
           </div>

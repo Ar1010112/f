@@ -5,7 +5,6 @@ export async function getCategories(userId: string): Promise<Category[]> {
   try {
     const categories = await prisma.category.findMany({
       where: { userId },
-      orderBy: { name: 'asc' },
     })
 
     return categories.map(category => ({

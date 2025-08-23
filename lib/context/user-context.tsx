@@ -8,6 +8,10 @@ interface UserContextType {
   setUser: (user: User | null) => void
   updateProfile: (data: Partial<User>) => void
   isLoading: boolean
+  login: (email: string, password: string) => Promise<boolean>
+  register: (name: string, email: string, password: string) => Promise<boolean>
+  logout: () => void
+  isAuthenticated: boolean
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined)
@@ -17,19 +21,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate loading user data - in a real app, this would fetch from your auth provider
+    // Check if user is logged in from localStorage
     const loadUser = async () => {
       try {
-        // For demo purposes, create a default user
-        const demoUser: User = {
-          id: 'demo-user-1',
-          name: 'John Doe',
-          email: 'john@example.com',
-          image: '/placeholder-user.jpg'
+        const storedUser = localStorage.getItem('financeflow_user')
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          setUser(userData)
         }
-        setUser(demoUser)
       } catch (error) {
         console.error('Error loading user:', error)
+        localStorage.removeItem('financeflow_user')
       } finally {
         setIsLoading(false)
       }
@@ -38,15 +40,84 @@ export function UserProvider({ children }: { children: ReactNode }) {
     loadUser()
   }, [])
 
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      setIsLoading(true)
+      
+      // Simulate API call - in real app, this would be an actual API call
+      if (email && password) {
+        const userData: User = {
+          id: `user-${Date.now()}`,
+          name: email.split('@')[0],
+          email: email,
+          image: '/placeholder-user.jpg'
+        }
+        
+        setUser(userData)
+        localStorage.setItem('financeflow_user', JSON.stringify(userData))
+        return true
+      }
+      
+      return false
+    } catch (error) {
+      console.error('Login error:', error)
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const register = async (name: string, email: string, password: string): Promise<boolean> => {
+    try {
+      setIsLoading(true)
+      
+      // Simulate API call - in real app, this would be an actual API call
+      if (name && email && password) {
+        const userData: User = {
+          id: `user-${Date.now()}`,
+          name: name,
+          email: email,
+          image: '/placeholder-user.jpg'
+        }
+        
+        setUser(userData)
+        localStorage.setItem('financeflow_user', JSON.stringify(userData))
+        return true
+      }
+      
+      return false
+    } catch (error) {
+      console.error('Registration error:', error)
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const logout = () => {
+    setUser(null)
+    localStorage.removeItem('financeflow_user')
+  }
+
   const updateProfile = (data: Partial<User>) => {
     if (user) {
-      setUser({ ...user, ...data })
-      // Here you would also make an API call to update the user in the database
+      const updatedUser = { ...user, ...data }
+      setUser(updatedUser)
+      localStorage.setItem('financeflow_user', JSON.stringify(updatedUser))
     }
   }
 
   return (
-    <UserContext.Provider value={{ user, setUser, updateProfile, isLoading }}>
+    <UserContext.Provider value={{ 
+      user, 
+      setUser, 
+      updateProfile, 
+      isLoading,
+      login,
+      register,
+      logout,
+      isAuthenticated: !!user
+    }}>
       {children}
     </UserContext.Provider>
   )

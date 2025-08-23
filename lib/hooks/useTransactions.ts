@@ -22,9 +22,17 @@ export function useTransactions(userId: string | null) {
           throw new Error('Failed to fetch transactions')
         }
         const data = await response.json()
-        setTransactions(data)
+        // Ensure dates are properly parsed
+        const parsedData = data.map((transaction: any) => ({
+          ...transaction,
+          date: new Date(transaction.date)
+        }))
+        setTransactions(parsedData)
       } catch (err) {
+        console.error('Error fetching transactions:', err)
         setError(err instanceof Error ? err.message : 'An error occurred')
+        // Fallback to empty array on error
+        setTransactions([])
       } finally {
         setLoading(false)
       }
@@ -48,9 +56,15 @@ export function useTransactions(userId: string | null) {
       }
 
       const newTransaction = await response.json()
-      setTransactions(prev => [newTransaction, ...prev])
-      return newTransaction
+      // Ensure date is properly parsed
+      const parsedTransaction = {
+        ...newTransaction,
+        date: new Date(newTransaction.date)
+      }
+      setTransactions(prev => [parsedTransaction, ...prev])
+      return parsedTransaction
     } catch (err) {
+      console.error('Error adding transaction:', err)
       throw err
     }
   }
@@ -70,11 +84,17 @@ export function useTransactions(userId: string | null) {
       }
 
       const updatedTransaction = await response.json()
+      // Ensure date is properly parsed
+      const parsedTransaction = {
+        ...updatedTransaction,
+        date: new Date(updatedTransaction.date)
+      }
       setTransactions(prev => 
-        prev.map(t => t.id === id ? updatedTransaction : t)
+        prev.map(t => t.id === id ? parsedTransaction : t)
       )
-      return updatedTransaction
+      return parsedTransaction
     } catch (err) {
+      console.error('Error updating transaction:', err)
       throw err
     }
   }
@@ -91,7 +111,29 @@ export function useTransactions(userId: string | null) {
 
       setTransactions(prev => prev.filter(t => t.id !== id))
     } catch (err) {
+      console.error('Error deleting transaction:', err)
       throw err
+    }
+  }
+
+  const refetch = async () => {
+    if (userId) {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/transactions?userId=${userId}`)
+        if (response.ok) {
+          const data = await response.json()
+          const parsedData = data.map((transaction: any) => ({
+            ...transaction,
+            date: new Date(transaction.date)
+          }))
+          setTransactions(parsedData)
+        }
+      } catch (err) {
+        console.error('Error refetching transactions:', err)
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -102,19 +144,6 @@ export function useTransactions(userId: string | null) {
     addTransaction,
     updateTransaction,
     deleteTransaction,
-    refetch: () => {
-      if (userId) {
-        const fetchTransactions = async () => {
-          try {
-            const response = await fetch(`/api/transactions?userId=${userId}`)
-            const data = await response.json()
-            setTransactions(data)
-          } catch (err) {
-            console.error('Error refetching transactions:', err)
-          }
-        }
-        fetchTransactions()
-      }
-    },
+    refetch,
   }
 }
